@@ -1,9 +1,9 @@
 from typing import List, Tuple
 import numpy as np
-import tensorflow as tf
 
 
-def build_lstm_model(n_lags: int, number_nodes: int, learning_rate: float) -> tf.keras.Model:
+def build_lstm_model(n_lags: int, number_nodes: int, learning_rate: float):
+    import tensorflow as tf  # lazy import
     model = tf.keras.Sequential([
         tf.keras.layers.Input((n_lags, 1)),
         tf.keras.layers.LSTM(number_nodes, input_shape=(n_lags, 1)),
@@ -15,13 +15,13 @@ def build_lstm_model(n_lags: int, number_nodes: int, learning_rate: float) -> tf
     return model
 
 
-def train_lstm(model: tf.keras.Model, X: np.ndarray, y: np.ndarray, epochs: int, batch_size: int) -> Tuple[tf.keras.callbacks.History, List[float]]:
+def train_lstm(model, X: np.ndarray, y: np.ndarray, epochs: int, batch_size: int):
     history = model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=0)
     preds = model.predict(X, verbose=0).flatten().tolist()
     return history, preds
 
 
-def roll_forecast(model: tf.keras.Model, last_seq: np.ndarray, test_values: np.ndarray, days: int) -> List[float]:
+def roll_forecast(model, last_seq: np.ndarray, test_values: np.ndarray, days: int) -> List[float]:
     preds = []
     seq = last_seq.copy()
     for i in range(days + 1):

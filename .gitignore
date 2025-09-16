@@ -23,6 +23,9 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+.vscode/
+
+Hybrid_Model_For_Forecasting.py
 
 # Project-specific
 server/app.db

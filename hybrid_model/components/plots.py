@@ -1,9 +1,9 @@
 import os
 from typing import List
-import matplotlib.pyplot as plt
 
 
 def plot_series(idx, values, title: str, ylabel: str, output_dir: str, filename: str = None):
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 5))
     plt.plot(idx, values, label=title)
     plt.title(title)
@@ -17,6 +17,7 @@ def plot_series(idx, values, title: str, ylabel: str, output_dir: str, filename:
 
 
 def plot_two_series(idx, y_true, y_pred, title: str, output_dir: str, filename: str = None):
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 5))
     plt.plot(idx, y_true, label="Actual")
     plt.plot(idx, y_pred, label="Predicted", color="red")
@@ -31,6 +32,7 @@ def plot_two_series(idx, y_true, y_pred, title: str, output_dir: str, filename: 
 
 
 def plot_bar(labels: List[str], values: List[float], title: str, output_dir: str, filename: str):
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 5))
     plt.bar(labels, values, color=["blue", "orange", "green"][: len(values)])
     plt.title(title)
@@ -40,6 +42,7 @@ def plot_bar(labels: List[str], values: List[float], title: str, output_dir: str
 
 
 def plot_errors(errors: List[float], output_dir: str):
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10, 5))
     plt.plot(errors, label="Prediction Errors")
     plt.title("Prediction Errors over Time")
