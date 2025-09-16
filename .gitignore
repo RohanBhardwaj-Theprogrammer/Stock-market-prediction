@@ -30,3 +30,5 @@ outputs/
 Output_Dataset_01/
 Output_Dataset_02/
 *.log
+
+Dataset_*.csv
