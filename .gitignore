@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dll
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Build & tooling
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+server/app.db
+outputs/
+Output_Dataset_01/
+Output_Dataset_02/
+*.log

@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hybrid LSTM + ARIMA Forecaster</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; margin-top: 8px; }
+    input, select, button { padding: 8px; margin-top: 4px; }
+    img { max-width: 100%; height: auto; border: 1px solid #eee; padding: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Hybrid LSTM + ARIMA Forecaster</h1>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Username</label>
+        <input id="username" placeholder="alice" />
+      </div>
+      <div>
+        <button id="signIn">Sign In</button>
+        <span id="userStatus" class="muted"></span>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Dataset</label>
+        <select id="dataset">
+          <option value="dataset_01">Dataset_01.csv</option>
+          <option value="dataset_02">Dataset_02.csv</option>
+        </select>
+      </div>
+      <div>
+        <label>Days (horizon)</label>
+        <input id="days" type="number" value="30" min="1" max="365" />
+      </div>
+      <div>
+        <label>N Lags</label>
+        <input id="n_lags" type="number" value="30" min="5" max="200" />
+      </div>
+      <div>
+        <label>Epochs</label>
+        <input id="epochs" type="number" value="10" min="1" max="200" />
+      </div>
+      <div>
+        <label>Learning Rate</label>
+        <input id="learning_rate" type="number" step="0.0001" value="0.001" />
+      </div>
+      <div>
+        <label>Batch Size</label>
+        <input id="batch_size" type="number" value="32" min="1" max="1024" />
+      </div>
+      <div>
+        <label>Nodes</label>
+        <input id="number_nodes" type="number" value="64" min="8" max="1024" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px; align-items: end;">
+      <div>
+        <label>Trials (tuning)</label>
+        <input id="trials" type="number" value="10" min="1" max="100" />
+      </div>
+      <div>
+        <button id="tuneTrain">Tune then Train</button>
+      </div>
+      <div>
+        <button id="run">Run Training</button>
+      </div>
+      <div>
+        <button id="savePrefs">Save Prefs</button>
+      </div>
+      <div>
+        <button id="loadPrefs">Load Prefs</button>
+      </div>
+    </div>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <div id="results" class="card" style="display:none;">
+    <h2>Results</h2>
+    <h3>Best Params (from tuning)</h3>
+    <pre id="bestParams" class="muted"></pre>
+    <pre id="metrics"></pre>
+    <div id="images" class="grid"></div>
+  </div>
+
+  <script src="./tune.js"></script>
+  <script>
+    const statusEl = document.getElementById('status');
+    const runBtn = document.getElementById('run');
+    const results = document.getElementById('results');
+    const metricsEl = document.getElementById('metrics');
+    const imagesEl = document.getElementById('images');
+
+    let userId = null;
+
+    async function run() {
+      statusEl.textContent = 'Running… this may take a minute (TensorFlow training).';
+      results.style.display = 'none';
+      imagesEl.innerHTML = '';
+      metricsEl.textContent = '';
+
+      const payload = {
+        dataset: document.getElementById('dataset').value,
+        days: parseInt(document.getElementById('days').value, 10),
+        n_lags: parseInt(document.getElementById('n_lags').value, 10),
+        epochs: parseInt(document.getElementById('epochs').value, 10),
+        learning_rate: parseFloat(document.getElementById('learning_rate').value),
+        batch_size: parseInt(document.getElementById('batch_size').value, 10),
+        number_nodes: parseInt(document.getElementById('number_nodes').value, 10),
+      };
+
+      try {
+        const url = new URL('http://127.0.0.1:8000/train');
+        if (userId) url.searchParams.set('user_id', userId);
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        metricsEl.textContent = JSON.stringify(data.metrics, null, 2);
+        imagesEl.innerHTML = data.images.map(src => `<div><img src="http://127.0.0.1:8000${src}" alt="plot"/></div>`).join('');
+        results.style.display = 'block';
+        statusEl.textContent = `Run ${data.run_id} completed.`;
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+      }
+    }
+
+    runBtn.addEventListener('click', run);
+    document.getElementById('tuneTrain').addEventListener('click', tuneThenTrain);
+
+    // Sign in
+    document.getElementById('signIn').addEventListener('click', async () => {
+      const username = document.getElementById('username').value.trim();
+      if (!username) return;
+      const res = await fetch('http://127.0.0.1:8000/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      userId = data.user_id;
+      document.getElementById('userStatus').textContent = `Signed in as ${data.username} (#${userId})`;
+    });
+
+    // Save prefs
+    document.getElementById('savePrefs').addEventListener('click', async () => {
+      if (!userId) { alert('Sign in first'); return; }
+      const params = {
+        dataset: document.getElementById('dataset').value,
+        days: parseInt(document.getElementById('days').value, 10),
+        n_lags: parseInt(document.getElementById('n_lags').value, 10),
+        epochs: parseInt(document.getElementById('epochs').value, 10),
+        learning_rate: parseFloat(document.getElementById('learning_rate').value),
+        batch_size: parseInt(document.getElementById('batch_size').value, 10),
+        number_nodes: parseInt(document.getElementById('number_nodes').value, 10)
+      };
+      await fetch('http://127.0.0.1:8000/preferences', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ user_id: userId, params })
+      });
+      statusEl.textContent = 'Preferences saved.';
+    });
+
+    // Load prefs
+    document.getElementById('loadPrefs').addEventListener('click', async () => {
+      if (!userId) { alert('Sign in first'); return; }
+      const res = await fetch(`http://127.0.0.1:8000/preferences/${userId}`);
+      const data = await res.json();
+      const p = data.params || {};
+      if (p.dataset) document.getElementById('dataset').value = p.dataset;
+      if (p.days) document.getElementById('days').value = p.days;
+      if (p.n_lags) document.getElementById('n_lags').value = p.n_lags;
+      if (p.epochs) document.getElementById('epochs').value = p.epochs;
+      if (p.learning_rate) document.getElementById('learning_rate').value = p.learning_rate;
+      if (p.batch_size) document.getElementById('batch_size').value = p.batch_size;
+      if (p.number_nodes) document.getElementById('number_nodes').value = p.number_nodes;
+      statusEl.textContent = 'Preferences loaded.';
+    });
+  </script>
+</body>
+</html>
